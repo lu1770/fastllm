@@ -1,6 +1,10 @@
 FROM ubuntu:latest
 
-RUN apt-get update --fix-missing 
+RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak
+COPY . .
+ADD sources.list /etc/apt/ 
+
+RUN apt-get update
 RUN apt-get install -y git cmake g++ nvidia-cuda-toolkit
 
 WORKDIR /fastllm
