@@ -68,6 +68,8 @@ std::map <std::string, ChatSession*> sessions;
 std::mutex locker;
 
 int main(int argc, char** argv) {
+    SetConsoleOutputCP(65001);
+
     WebConfig config;
     ParseArgs(argc, argv, config);
 
@@ -84,8 +86,8 @@ int main(int argc, char** argv) {
             session->status = 2;
         } else {
             auto prompt = model->MakeInput(session->history, session->round, input);
+            std::cout << "prompt:" << prompt;
             auto inputs = model->weight.tokenizer.Encode(prompt);
-
             std::vector<int> tokens;
             for (int i = 0; i < inputs.Count(0); i++) {
                 tokens.push_back(((float *) inputs.cpuData)[i]);
@@ -93,22 +95,28 @@ int main(int argc, char** argv) {
 
             int handleId = model->LaunchResponseTokens(tokens);
             std::vector<float> results;
+            std::cout << "output:" ;
             while (true) {
                 int result = model->FetchResponseTokens(handleId);
                 if (result == -1) {
+                    std::cout << "interrupted by -1";
                     break;
                 } else {
                     results.clear();
                     results.push_back(result);
-                    session->output += model->weight.tokenizer.Decode(fastllm::Data (fastllm::DataType::FLOAT32, {(int)results.size()}, results));
+                    auto output = model->weight.tokenizer.Decode(fastllm::Data(fastllm::DataType::FLOAT32, { (int)results.size() }, results));
+                    session->output += output;
+                    std::cout << output;
                 }
                 if (session->status == 2) {
+                    std::cout << "interrupted by 2";
                     break;
                 }
             }
             session->history = model->MakeHistory(session->history, session->round++, input, session->output);
             session->output += "<eop>\n";
             session->status = 2;
+            std::cout << "<eop>" << std::endl;
         }
     };
 
