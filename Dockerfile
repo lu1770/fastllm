@@ -1,22 +1,21 @@
-# syntax=docker/dockerfile:1-labs
-FROM nvidia/cuda:11.7.1-devel-ubuntu22.04
+FROM ubuntu:latest
 
-# Update Apt repositories
-RUN apt-get update 
+RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak
+COPY . .
+ADD sources.list /etc/apt/ 
 
-# Install and configure Python
-RUN apt-get -y --no-install-recommends install wget build-essential python3.10 python3-pip
-RUN update-alternatives --install /usr/bin/python  python /usr/bin/python3.10 1
-RUN pip install setuptools streamlit-chat
+RUN apt-get update
+RUN apt-get install -y git cmake g++ nvidia-cuda-toolkit
 
-ENV WORKDIR /fastllm
-
-# Install cmake
-RUN wget -c https://cmake.org/files/LatestRelease/cmake-3.27.0-linux-x86_64.sh && bash ./cmake-3.27.0-linux-x86_64.sh  --skip-license --prefix=/usr/
-
-WORKDIR $WORKDIR
-ADD . $WORKDIR/
-
-RUN mkdir $WORKDIR/build && cd build && cmake .. -DUSE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=native && make -j && cd tools && python setup.py install
-
-CMD /fastllm/build/webui -p /models/chatglm2-6b-int8.flm
+WORKDIR /fastllm
+COPY . /fastllm
+RUN mkdir build
+WORKDIR /fastllm/build
+RUN cmake .. -DUSE_CUDA=ON
+RUN make -j
+WORKDIR /fastllm/build/tools
+RUN python setup.py install
+WORKDIR /fastllm/build/tools  
+RUN python setup.py install
+WORKDIR /fastllm/build
+RUN ./webui -p model.flm --port 1234
